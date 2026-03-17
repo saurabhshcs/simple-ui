@@ -1,3 +1,13 @@
+# IDE
+.idea/
+.vscode/
+
+# SQLite database
+server/data/
+
+# Uploaded files
+server/uploads/
+
 # Logs
 logs
 *.log

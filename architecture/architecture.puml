@@ -1,0 +1,210 @@
+@startuml Simple UI — High-Level Architecture
+
+!theme plain
+skinparam backgroundColor #FAFAFA
+skinparam defaultFontName Arial
+skinparam ArrowColor #5c6bc0
+skinparam NoteBackgroundColor #fff9c4
+skinparam NoteBorderColor #f9a825
+
+title Simple UI — High-Level Architecture
+
+' ─── Actors ───────────────────────────────────────────────────────────────────
+actor "User\n(Browser)" as USER
+
+' ─── Client (React SPA) ───────────────────────────────────────────────────────
+package "Client — React + Vite (localhost:5173)" as CLIENT {
+  package "Pages / Layout" {
+    [LoginPage] as LP
+    [AppShell] as SHELL
+    [Sidebar] as SB
+    [TopBar] as TB
+    [SettingsPanel] as SP
+  }
+
+  package "Chat UI" {
+    [ChatWindow] as CW
+    [MessageList] as ML
+    [ChatInput] as CI
+  }
+
+  package "Auth UI" {
+    [LoginForm] as LF
+    [OtpForm] as OTP
+    [DeviceRegistration] as DR
+  }
+
+  package "State (Zustand)" {
+    [authStore\n· user, token\n· login / logout] as AS
+    [chatStore\n· conversations, messages\n· streaming state] as CS
+    [settingsStore\n· theme, model, provider\n· background URL] as SS
+  }
+
+  package "Hooks" {
+    [useChat\n(SSE consumer)] as UCH
+    [useAuth] as UA
+  }
+
+  package "API Client" {
+    [axios + JWT interceptor\ntimeout: 30 s] as AXI
+  }
+}
+
+' ─── Vite Dev Proxy ───────────────────────────────────────────────────────────
+cloud "Vite Dev Proxy\n/api/* → :3001\n/uploads/* → :3001" as PROXY
+
+' ─── Server (Express) ─────────────────────────────────────────────────────────
+package "Server — Express + TypeScript (localhost:3001)" as SERVER {
+  package "Middleware" {
+    [helmet\ncors\nrate-limit] as MW
+    [requireAuth\n(JWT + session check)] as AUTH_MW
+  }
+
+  package "Routes" {
+    [POST /api/auth/*\nregister, login\nverify-otp, logout] as R_AUTH
+    [POST /api/chat\nGET/DELETE /api/chat/conversations] as R_CHAT
+    [GET /api/models] as R_MODELS
+    [GET/PUT/DELETE /api/settings/api-keys\nPUT/DELETE /api/settings/background] as R_SETTINGS
+    [POST /api/files/upload\nDELETE /api/files/:id] as R_FILES
+  }
+
+  package "Auth Services" {
+    [jwtService\n(sign / verify / revoke)] as JWT_SVC
+    [otpService\n(bcrypt hash, 10 min TTL)] as OTP_SVC
+    [deviceService\n(SHA-256 fingerprint\nconfirm token)] as DEV_SVC
+    [encryptionService\n(AES-256-GCM\niv:tag:cipher)] as ENC_SVC
+  }
+
+  package "LLM Adapters" {
+    [LLMAdapter\n«interface»] as ADAPTER_IF
+    [OpenAIAdapter\n(gpt-4o, etc.)] as OA
+    [AnthropicAdapter\n(claude-3-x)] as AA
+    [GeminiAdapter\n(gemini-pro)] as GA
+    [adapterFactory\n+ model cache (5 min)] as AF
+  }
+
+  package "Storage Services" {
+    [fileService\n(multer, pdf-parse\nmammoth, xlsx)] as FS
+    [emailService\n(Nodemailer)] as ES
+  }
+}
+
+' ─── Database ─────────────────────────────────────────────────────────────────
+database "SQLite / PostgreSQL\n(Knex)" as DB {
+  [users]
+  [otp_codes]
+  [devices]
+  [sessions]
+  [api_keys\n(encrypted)]
+  [conversations]
+  [messages]
+  [files]
+}
+
+' ─── External Services ────────────────────────────────────────────────────────
+cloud "OpenAI API" as OPENAI
+cloud "Anthropic API" as ANTHROPIC
+cloud "Google Gemini API" as GEMINI
+cloud "SMTP Server\n(Mailpit dev / SES prod)" as SMTP
+
+' ─── Relationships ────────────────────────────────────────────────────────────
+
+USER --> CLIENT : HTTPS / localhost
+
+' Client internal
+LP --> LF
+LP --> OTP
+LP --> DR
+SHELL --> SB
+SHELL --> TB
+SHELL --> CW
+SHELL --> SP
+CW --> ML
+CW --> CI
+CI --> UCH
+UCH --> AXI
+LF --> AXI
+SP --> AXI
+TB --> AXI
+AS <.. UCH
+CS <.. UCH
+SS <.. UCH
+AS <.. LF
+SS <.. TB
+
+' Client → Proxy → Server
+AXI --> PROXY
+PROXY --> SERVER
+
+' Server routing
+MW --> R_AUTH
+MW --> R_CHAT
+MW --> R_MODELS
+MW --> R_SETTINGS
+MW --> R_FILES
+
+' Auth routes → services
+R_AUTH --> JWT_SVC
+R_AUTH --> OTP_SVC
+R_AUTH --> DEV_SVC
+R_AUTH --> ES
+
+' Chat route → LLM
+R_CHAT --> AF
+AF --> OA
+AF --> AA
+AF --> GA
+R_CHAT --> DB
+
+' Models route
+R_MODELS --> AF
+
+' Settings → encryption
+R_SETTINGS --> ENC_SVC
+R_SETTINGS --> DB
+
+' Files
+R_FILES --> FS
+FS --> DB
+
+' Services → DB
+JWT_SVC --> DB
+OTP_SVC --> DB
+DEV_SVC --> DB
+
+' Services → external
+OA --> OPENAI : REST / stream
+AA --> ANTHROPIC : REST / stream
+GA --> GEMINI : REST / stream
+ES --> SMTP : SMTP
+
+' ─── Notes ────────────────────────────────────────────────────────────────────
+note right of R_CHAT
+  SSE streaming
+  Content-Type: text/event-stream
+  data: {"token":"..."}\n\n
+  data: {"done":true, "conversationId":"..."}\n\n
+end note
+
+note right of AUTH_MW
+  Checks:
+  1. JWT signature valid
+  2. sessions.revoked = 0
+  3. devices.confirmed = 1
+end note
+
+note bottom of DB
+  Dev:  SQLite (DB_PATH)
+  Prod: PostgreSQL (DATABASE_URL)
+  Migrations via Knex
+end note
+
+note right of ENC_SVC
+  API keys stored as
+  iv:tag:ciphertext (hex)
+  Key derived from
+  ENCRYPTION_SECRET
+  via scryptSync
+end note
+
+@enduml
