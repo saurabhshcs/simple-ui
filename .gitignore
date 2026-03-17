@@ -2,6 +2,9 @@
 .idea/
 .vscode/
 
+# Claude Code guidance file (keep local, never commit to public repo)
+CLAUDE.md
+
 # SQLite database
 server/data/
 
