@@ -1,17 +1,19 @@
 import { useCallback } from 'react';
 import { EventSourceParserStream } from 'eventsource-parser/stream';
 import { useChatStore } from '../stores/chatStore';
-import { useSettingsStore } from '../stores/settingsStore';
-import type { ChatMessage } from '@simple-ui/shared';
+import type { ChatMessage, Provider } from '@simple-ui/shared';
 
-export function useChat() {
+// model and provider come from ChatInput's local state (per-conversation).
+// They are NOT read from settingsStore here. This prevents a stale-closure bug:
+// if model/provider were captured from the store at hook creation time, switching
+// models mid-conversation would silently send the old model.
+export function useChat(model: string, provider: Provider) {
   const store = useChatStore();
-  const { selectedModel, selectedProvider } = useSettingsStore();
 
   const sendMessage = useCallback(async (text: string) => {
     if (!text.trim() || store.isStreaming) return;
 
-    if (!selectedModel) {
+    if (!model) {
       store.addMessage({
         id: crypto.randomUUID(),
         conversationId: store.activeConversationId ?? '',
@@ -24,18 +26,15 @@ export function useChat() {
     }
 
     const fileIds = store.pendingFiles.map((f) => f.fileId);
-    const token = localStorage.getItem('auth_token');
+    const authToken = localStorage.getItem('auth_token');
     const isNewConversation = !store.activeConversationId;
 
-    // Build message history for the request
     const historyMessages: ChatMessage[] = store.messages.map((m) => ({
       role: m.role as ChatMessage['role'],
       content: m.content,
     }));
-    const userMessage: ChatMessage = { role: 'user', content: text };
-    const allMessages = [...historyMessages, userMessage];
+    const allMessages = [...historyMessages, { role: 'user' as const, content: text }];
 
-    // Optimistically add user message to UI
     store.addMessage({
       id: crypto.randomUUID(),
       conversationId: store.activeConversationId ?? '',
@@ -52,12 +51,12 @@ export function useChat() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
+          'Authorization': `Bearer ${authToken}`,
         },
         body: JSON.stringify({
           conversationId: store.activeConversationId,
-          model: selectedModel,
-          provider: selectedProvider,
+          model,
+          provider,
           messages: allMessages,
           fileIds,
         }),
@@ -68,9 +67,7 @@ export function useChat() {
         throw new Error(err.error ?? 'Chat request failed');
       }
 
-      // Get conversation ID from response header
       const newConvId = res.headers.get('X-Conversation-Id');
-
       const reader = res.body!
         .pipeThrough(new TextDecoderStream())
         .pipeThrough(new EventSourceParserStream())
@@ -82,42 +79,34 @@ export function useChat() {
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
-
         if (value.data === '[DONE]') break;
-
-        const parsed = JSON.parse(value.data) as { token?: string; done?: boolean; conversationId?: string; error?: string };
-
+        const parsed = JSON.parse(value.data) as {
+          token?: string; done?: boolean; conversationId?: string; error?: string;
+        };
         if (parsed.error) throw new Error(parsed.error);
-        if (parsed.token) {
-          fullContent += parsed.token;
-          store.appendToken(parsed.token);
-        }
-        if (parsed.done && parsed.conversationId) {
-          finalConvId = parsed.conversationId;
-        }
+        if (parsed.token) { fullContent += parsed.token; store.appendToken(parsed.token); }
+        if (parsed.done && parsed.conversationId) finalConvId = parsed.conversationId;
       }
 
       const convId = finalConvId ?? newConvId ?? crypto.randomUUID();
-      store.finishStreaming(convId, fullContent);
+      store.finishStreaming(convId, fullContent, model, provider);
 
       if (isNewConversation) {
-        // Add new conversation to the top of the sidebar
         store.setActiveConversation(convId);
         store.prependConversation({
           id: convId,
           title: text.slice(0, 60),
-          model: selectedModel,
-          provider: selectedProvider,
+          model,
+          provider,
           createdAt: Date.now(),
           updatedAt: Date.now(),
         });
       } else {
-        // Bubble existing conversation to top (most recently used)
         store.moveConversationToTop(convId);
       }
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Something went wrong. Please try again.';
-      store.finishStreaming(store.activeConversationId ?? '', '');
+      store.finishStreaming(store.activeConversationId ?? '', '', model, provider);
       store.addMessage({
         id: crypto.randomUUID(),
         conversationId: store.activeConversationId ?? '',
@@ -127,7 +116,8 @@ export function useChat() {
         createdAt: Date.now(),
       });
     }
-  }, [store, selectedModel, selectedProvider]);
+  // model and provider MUST be in this array — they replace the removed settingsStore reads.
+  }, [store, model, provider]);
 
   return { sendMessage, isStreaming: store.isStreaming };
 }
