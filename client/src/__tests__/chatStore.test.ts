@@ -97,7 +97,7 @@ describe('chatStore', () => {
       act(() => {
         useChatStore.getState().startStreaming();
         useChatStore.getState().appendToken('Full response');
-        useChatStore.getState().finishStreaming('conv-1', 'Full response');
+        useChatStore.getState().finishStreaming('conv-1', 'Full response', 'gpt-4o', 'openai');
       });
       const s = useChatStore.getState();
       expect(s.isStreaming).toBe(false);
@@ -183,15 +183,6 @@ describe('chatStore', () => {
   });
 
   describe('finishStreaming with model/provider', () => {
-    beforeEach(() => {
-      useChatStore.setState({
-        conversations: [],
-        messages: [],
-        isStreaming: false,
-        streamingContent: '',
-      });
-    });
-
     it('records model and provider on the committed assistant message', () => {
       act(() => {
         useChatStore.getState().startStreaming();
