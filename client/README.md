@@ -1,73 +1,57 @@
-# React + TypeScript + Vite
+# Simple UI — Client
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+React 19 + Vite + TypeScript frontend for the Simple UI GenAI chat interface.
 
-Currently, two official plugins are available:
+## Overview
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+The client is a single-page application that communicates with the Simple UI Express server via a proxied `/api` prefix. It handles:
 
-## React Compiler
+- **Authentication** — email/OTP/device-confirmation login flow
+- **Chat** — real-time token streaming via Server-Sent Events (SSE)
+- **Settings** — API key management, model/provider selection, theming
+- **File upload** — drag-and-drop PDF, DOCX, XLSX, image attachments
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Structure
 
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```
+src/
+├── api/            # Axios client with JWT Authorization header interceptor
+├── components/
+│   ├── auth/       # Login, register, OTP, device confirmation screens
+│   ├── chat/       # ChatWindow, MessageList, MessageBubble, ChatInput
+│   ├── layout/     # AppShell, Sidebar, TopBar, SettingsPanel
+│   ├── settings/   # ApiKeyManager, ThemePicker, ModelSelector
+│   └── shared/     # Reusable UI primitives
+├── hooks/          # useChat — SSE stream consumer + store updates
+├── stores/         # Zustand: authStore, chatStore, settingsStore
+└── themes/         # 5 built-in CSS variable theme maps
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## Key Design Decisions
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+**Theming without re-renders** — `settingsStore` applies themes by calling `document.documentElement.style.setProperty` directly, bypassing React's render cycle entirely.
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+**Optimistic UI for chat** — User messages are added to the store immediately before the SSE response arrives, so the UI feels instant.
+
+**SSE stream parsing** — `eventsource-parser` converts the raw byte stream from `/api/chat` into structured `{ token }` events that are accumulated into `chatStore.streamingContent`.
+
+## Development
+
+```bash
+# From the monorepo root
+npm run dev -w client      # Vite dev server on :5173 (proxies /api to :3001)
+npm run build -w client    # TypeScript check + Vite production build
+npm run test -w client     # Vitest unit tests (happy-dom environment)
+```
+
+## Testing
+
+Tests live in `src/__tests__/` and use **Vitest** with **happy-dom**:
+
+- `chatStore.test.ts` — store actions: streaming lifecycle, conversations, pending files
+- `settingsStore.test.ts` — theme switching, model selection, background URL persistence
+
+```bash
+npm run test -w client          # run once
+npm run test:watch -w client    # watch mode
 ```

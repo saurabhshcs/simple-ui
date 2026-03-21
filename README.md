@@ -109,7 +109,7 @@ npm run migrate
 
 ### 4. Start local SMTP (for OTP emails)
 ```bash
-mailpit --smtp 127.0.0.1:2525 --listen 127.0.0.1:8025
+mailpit
 # View emails at http://127.0.0.1:8025
 ```
 
@@ -159,7 +159,7 @@ Every JWT includes a `jti` stored in the `sessions` table. Logout revokes the se
 | `DB_PATH` | No | SQLite file path (default `server/data/simple-ui.sqlite`) |
 | `DATABASE_URL` | Prod | PostgreSQL connection string |
 | `SMTP_HOST` | No | SMTP host — **use IP address, not hostname** (default `127.0.0.1`) |
-| `SMTP_PORT` | No | SMTP port (default `2525`) |
+| `SMTP_PORT` | No | SMTP port (default `1025`) |
 | `SMTP_FROM` | No | From address for auth emails |
 
 > **Note:** `SMTP_HOST` must be an IP address. Nodemailer's DNS resolver doesn't read `/etc/hosts`, so `localhost` will hang. Use `127.0.0.1`.
@@ -191,7 +191,6 @@ The app is Docker-ready: one container for the Node server, one for PostgreSQL. 
 | [`docs/project-summary.md`](docs/project-summary.md) | Feature overview, tech stack, deployment options, roadmap |
 | [`docs/business-context.md`](docs/business-context.md) | Market context, target users, competitive positioning |
 | [`architecture/architecture.puml`](architecture/architecture.puml) | PlantUML system architecture diagram |
-| [`CLAUDE.md`](CLAUDE.md) | Claude Code guidance for AI-assisted development |
 
 ---
 
