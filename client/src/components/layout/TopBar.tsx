@@ -11,13 +11,14 @@ interface Props {
 
 export function TopBar({ onToggleSidebar, onOpenSettings }: Props) {
   const [models, setModels] = useState<ModelInfo[]>([]);
-  const { selectedModel, setModel, setTheme, activeTheme, modelsVersion } = useSettingsStore();
+  const { selectedModel, setModel, setTheme, activeTheme, modelsVersion, setAvailableModels } = useSettingsStore();
 
   useEffect(() => {
     apiClient.get('/models')
       .then((r) => {
         const fetched: ModelInfo[] = r.data;
         setModels(fetched);
+        setAvailableModels(fetched);  // Share with ChatInput via store
         // Auto-select first available model if none selected or stored model no longer exists
         if (fetched.length > 0 && !fetched.find((m) => m.id === selectedModel)) {
           setModel(fetched[0]!.id, fetched[0]!.provider);
