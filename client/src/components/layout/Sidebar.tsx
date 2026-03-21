@@ -21,12 +21,17 @@ export function Sidebar({ onNewChat }: Props) {
         if (list.length > 0 && !activeConversationId) {
           const latest = list[0];
           const res = await apiClient.get(`/chat/conversations/${latest.id}`);
-          setActiveConversation(latest.id, res.data.messages.map((m: { id: string; role: string; content: string; fileIds: string[]; created_at: number }) => ({
+          setActiveConversation(latest.id, res.data.messages.map((m: {
+            id: string; role: string; content: string; fileIds: string[];
+            created_at: number; model?: string; provider?: string;
+          }) => ({
             id: m.id,
             conversationId: latest.id,
             role: m.role,
             content: m.content,
             fileIds: m.fileIds ?? [],
+            model: m.model ?? undefined,
+            provider: m.provider ?? undefined,
             createdAt: m.created_at,
           })));
         }
@@ -37,12 +42,17 @@ export function Sidebar({ onNewChat }: Props) {
   const openConversation = async (id: string) => {
     if (id === activeConversationId) return;
     const res = await apiClient.get(`/chat/conversations/${id}`);
-    setActiveConversation(id, res.data.messages.map((m: { id: string; role: string; content: string; fileIds: string[]; created_at: number }) => ({
+    setActiveConversation(id, res.data.messages.map((m: {
+      id: string; role: string; content: string; fileIds: string[];
+      created_at: number; model?: string; provider?: string;
+    }) => ({
       id: m.id,
       conversationId: id,
       role: m.role,
       content: m.content,
       fileIds: m.fileIds ?? [],
+      model: m.model ?? undefined,
+      provider: m.provider ?? undefined,
       createdAt: m.created_at,
     })));
   };
