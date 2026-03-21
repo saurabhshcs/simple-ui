@@ -92,6 +92,8 @@ export interface StoredMessage {
   role: 'user' | 'assistant' | 'system';
   content: string;
   fileIds: string[];
+  model?: string;       // which model generated/sent this message
+  provider?: Provider;  // which provider
   createdAt: number;
 }
 
