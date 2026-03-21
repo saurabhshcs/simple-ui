@@ -21,7 +21,7 @@ interface ChatState {
   addMessage: (msg: StoredMessage) => void;
   startStreaming: () => void;
   appendToken: (token: string) => void;
-  finishStreaming: (conversationId: string, fullContent: string) => void;
+  finishStreaming: (conversationId: string, fullContent: string, model: string, provider: string) => void;
   addPendingFile: (file: PendingFile) => void;
   removePendingFile: (fileId: string) => void;
   clearPendingFiles: () => void;
@@ -52,7 +52,7 @@ export const useChatStore = create<ChatState>((set) => ({
   appendToken: (token) =>
     set((s) => ({ streamingContent: s.streamingContent + token })),
 
-  finishStreaming: (conversationId, fullContent) => {
+  finishStreaming: (conversationId, fullContent, model, provider) => {
     if (typeof fullContent !== 'string') {
       console.warn('[chatStore] finishStreaming received non-string content:', typeof fullContent, fullContent);
     }
@@ -67,9 +67,15 @@ export const useChatStore = create<ChatState>((set) => ({
           role: 'assistant',
           content: typeof fullContent === 'string' ? fullContent : String(fullContent),
           fileIds: [],
+          model,
+          provider,
           createdAt: Date.now(),
         },
       ],
+      // Update the in-memory sidebar entry so the label reflects the switched model immediately
+      conversations: s.conversations.map((c) =>
+        c.id === conversationId ? { ...c, model, provider } : c
+      ),
     }));
   },
 

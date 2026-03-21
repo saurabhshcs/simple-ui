@@ -181,4 +181,41 @@ describe('chatStore', () => {
       expect(s.conversations[0]!.updatedAt).toBeGreaterThan(old);
     });
   });
+
+  describe('finishStreaming with model/provider', () => {
+    beforeEach(() => {
+      useChatStore.setState({
+        conversations: [],
+        messages: [],
+        isStreaming: false,
+        streamingContent: '',
+      });
+    });
+
+    it('records model and provider on the committed assistant message', () => {
+      act(() => {
+        useChatStore.getState().startStreaming();
+        useChatStore.getState().appendToken('hello');
+        useChatStore.getState().finishStreaming('conv-1', 'hello world', 'gpt-4o', 'openai');
+      });
+      const msg = useChatStore.getState().messages.at(-1);
+      expect(msg?.model).toBe('gpt-4o');
+      expect(msg?.provider).toBe('openai');
+      expect(msg?.role).toBe('assistant');
+    });
+
+    it('updates the in-memory conversations list with the new model/provider', () => {
+      act(() => {
+        useChatStore.setState({
+          conversations: [{ id: 'conv-1', title: 'Test', model: 'gpt-4o', provider: 'openai', createdAt: 0, updatedAt: 0 }],
+        });
+      });
+      act(() => {
+        useChatStore.getState().finishStreaming('conv-1', 'response', 'claude-3-5-sonnet-20241022', 'anthropic');
+      });
+      const conv = useChatStore.getState().conversations.find(c => c.id === 'conv-1');
+      expect(conv?.model).toBe('claude-3-5-sonnet-20241022');
+      expect(conv?.provider).toBe('anthropic');
+    });
+  });
 });
