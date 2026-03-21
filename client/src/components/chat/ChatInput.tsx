@@ -40,7 +40,7 @@ export function ChatInput() {
       setModel(selectedModel ?? '');
       setProvider((selectedProvider ?? 'openai') as Provider);
     }
-  }, [activeConversationId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [activeConversationId]); // intentionally omits conversations/settings — re-sync only on conversation switch, not on every token or settings change
 
   const { sendMessage, isStreaming } = useChat(model, provider);
   const addPendingFile = useChatStore((s) => s.addPendingFile);
