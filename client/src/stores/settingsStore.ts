@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { themes, defaultTheme, type Theme } from '../themes/themes';
+import type { ModelInfo } from '@simple-ui/shared';
 
 interface SettingsState {
   activeTheme: Theme;
@@ -7,10 +8,12 @@ interface SettingsState {
   selectedModel: string;
   selectedProvider: 'openai' | 'anthropic' | 'gemini';
   modelsVersion: number;
+  availableModels: ModelInfo[];
   setTheme: (themeId: string) => void;
   setBackground: (url: string | null) => void;
   setModel: (model: string, provider: 'openai' | 'anthropic' | 'gemini') => void;
   bumpModelsVersion: () => void;
+  setAvailableModels: (models: ModelInfo[]) => void;
 }
 
 function applyTheme(theme: Theme) {
@@ -29,6 +32,7 @@ export const useSettingsStore = create<SettingsState>((set) => ({
   selectedModel: localStorage.getItem('model') ?? '',
   selectedProvider: (localStorage.getItem('provider') as SettingsState['selectedProvider']) ?? 'openai',
   modelsVersion: 0,
+  availableModels: [],
 
   setTheme: (themeId) => {
     const theme = themes.find((t) => t.id === themeId) ?? defaultTheme;
@@ -50,4 +54,6 @@ export const useSettingsStore = create<SettingsState>((set) => ({
   },
 
   bumpModelsVersion: () => set((s) => ({ modelsVersion: s.modelsVersion + 1 })),
+
+  setAvailableModels: (models) => set({ availableModels: models }),
 }));
