@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { Conversation, StoredMessage } from '@simple-ui/shared';
+import type { Conversation, Provider, StoredMessage } from '@simple-ui/shared';
 
 export interface PendingFile {
   fileId: string;
@@ -21,7 +21,7 @@ interface ChatState {
   addMessage: (msg: StoredMessage) => void;
   startStreaming: () => void;
   appendToken: (token: string) => void;
-  finishStreaming: (conversationId: string, fullContent: string, model: string, provider: string) => void;
+  finishStreaming: (conversationId: string, fullContent: string, model: string, provider: Provider) => void;
   addPendingFile: (file: PendingFile) => void;
   removePendingFile: (fileId: string) => void;
   clearPendingFiles: () => void;
