@@ -72,7 +72,7 @@ router.post('/', requireAuth, async (req, res) => {
       id: convId, user_id: userId, title, model, provider, created_at: now, updated_at: now,
     });
   } else {
-    await db('conversations').where({ id: convId, user_id: userId }).update({ updated_at: Date.now() });
+    await db('conversations').where({ id: convId, user_id: userId }).update({ updated_at: Date.now(), model, provider });
   }
 
   // Save the user message
@@ -84,6 +84,8 @@ router.post('/', requireAuth, async (req, res) => {
       role: 'user',
       content: lastUserMsg.content,
       file_ids: JSON.stringify(fileIds),
+      model,          // NEW
+      provider,       // NEW
       created_at: Date.now(),
     });
   }
@@ -112,6 +114,8 @@ router.post('/', requireAuth, async (req, res) => {
         role: 'assistant',
         content: fullResponse,
         file_ids: '[]',
+        model,          // NEW
+        provider,       // NEW
         created_at: Date.now(),
       });
       res.write(`data: ${JSON.stringify({ done: true, conversationId: convId })}\n\n`);
@@ -157,13 +161,19 @@ router.get('/conversations/:id', requireAuth, async (req, res) => {
   const messages = await db('messages')
     .where({ conversation_id: conv.id })
     .orderBy('created_at', 'asc')
-    .select('id', 'role', 'content', 'file_ids', 'created_at');
+    .select('id', 'role', 'content', 'file_ids', 'created_at', 'model', 'provider');
 
   res.json({
     ...conv,
-    messages: messages.map((m: { id: string; role: string; content: string; file_ids: string; created_at: number }) => ({
+    messages: messages.map((m: {
+      id: string; role: string; content: string;
+      file_ids: string; created_at: number;
+      model?: string; provider?: string;
+    }) => ({
       ...m,
       fileIds: JSON.parse(m.file_ids ?? '[]'),
+      model: m.model ?? undefined,
+      provider: m.provider ?? undefined,
     })),
   });
 });
