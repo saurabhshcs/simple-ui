@@ -140,6 +140,8 @@ beforeAll(async () => {
 afterEach(async () => {
   await db('messages').delete();
   await db('conversations').delete();
+  await db('otp_codes').delete();
+  await db('sessions').delete();
 });
 
 describe('POST /api/chat model persistence', () => {
@@ -169,10 +171,11 @@ describe('POST /api/chat model persistence', () => {
       await db('api_keys').insert({ id: crypto.randomUUID(), user_id: userId, provider: 'anthropic', key_value: encrypt('sk-ant-test'), created_at: Date.now(), updated_at: Date.now() });
     }
 
-    await request(app)
+    const r2 = await request(app)
       .post('/api/chat')
       .set('Authorization', `Bearer ${token}`)
       .send({ conversationId: convId, model: 'claude-3-5-sonnet-20241022', provider: 'anthropic', messages: [{ role: 'user', content: 'second' }] });
+    expect(r2.status).toBe(200);
 
     const conv = await db('conversations').where({ id: convId }).first();
     expect(conv.model).toBe('claude-3-5-sonnet-20241022');
