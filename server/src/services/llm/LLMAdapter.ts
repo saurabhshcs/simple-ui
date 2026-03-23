@@ -33,7 +33,7 @@ export interface LLMAdapter {
   streamChat(
     req: LLMRequest,
     onToken: (token: string) => void,
-    onDone: () => void,
+    onDone: () => void | Promise<void>,
     onError: (err: Error) => void,
   ): Promise<void>;
 }

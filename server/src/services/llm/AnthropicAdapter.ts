@@ -22,7 +22,7 @@ export class AnthropicAdapter implements LLMAdapter {
   async streamChat(
     req: LLMRequest,
     onToken: (token: string) => void,
-    onDone: () => void,
+    onDone: () => void | Promise<void>,
     onError: (err: Error) => void,
   ): Promise<void> {
     try {
@@ -35,9 +35,19 @@ export class AnthropicAdapter implements LLMAdapter {
         messages: userMessages,
       });
 
-      stream.on('text', onToken);
-      await stream.finalMessage();
-      onDone();
+      // Iterate raw stream events to extract text deltas explicitly.
+      // This is more reliable than stream.on('text', onToken) which passes
+      // (textDelta, textSnapshot) — two args — to a callback typed for one.
+      for await (const event of stream) {
+        if (
+          event.type === 'content_block_delta' &&
+          event.delta.type === 'text_delta'
+        ) {
+          onToken(event.delta.text);
+        }
+      }
+
+      await onDone();
     } catch (err) {
       onError(err instanceof Error ? err : new Error(String(err)));
     }

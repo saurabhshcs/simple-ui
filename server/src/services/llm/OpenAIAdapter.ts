@@ -25,7 +25,7 @@ export class OpenAIAdapter implements LLMAdapter {
   async streamChat(
     req: LLMRequest,
     onToken: (token: string) => void,
-    onDone: () => void,
+    onDone: () => void | Promise<void>,
     onError: (err: Error) => void,
   ): Promise<void> {
     try {
@@ -42,7 +42,7 @@ export class OpenAIAdapter implements LLMAdapter {
         const token = chunk.choices[0]?.delta?.content;
         if (token) onToken(token);
       }
-      onDone();
+      await onDone();
     } catch (err) {
       onError(err instanceof Error ? err : new Error(String(err)));
     }

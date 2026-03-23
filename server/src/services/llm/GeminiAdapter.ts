@@ -22,7 +22,7 @@ export class GeminiAdapter implements LLMAdapter {
   async streamChat(
     req: LLMRequest,
     onToken: (token: string) => void,
-    onDone: () => void,
+    onDone: () => void | Promise<void>,
     onError: (err: Error) => void,
   ): Promise<void> {
     try {
@@ -41,7 +41,7 @@ export class GeminiAdapter implements LLMAdapter {
         const token = chunk.text();
         if (token) onToken(token);
       }
-      onDone();
+      await onDone();
     } catch (err) {
       onError(err instanceof Error ? err : new Error(String(err)));
     }

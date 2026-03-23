@@ -84,7 +84,10 @@ export function useChat(model: string, provider: Provider) {
           token?: string; done?: boolean; conversationId?: string; error?: string;
         };
         if (parsed.error) throw new Error(parsed.error);
-        if (parsed.token) { fullContent += parsed.token; store.appendToken(parsed.token); }
+        if (parsed.token && typeof parsed.token === 'string') {
+          fullContent += parsed.token;
+          store.appendToken(parsed.token);
+        }
         if (parsed.done && parsed.conversationId) finalConvId = parsed.conversationId;
       }
 
