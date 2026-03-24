@@ -17,12 +17,25 @@ Most AI chat platforms (ChatGPT, Copilot, Claude.ai) lock you into one provider,
 
 ---
 
+## Recent Updates
+
+### March 2026
+- **Per-conversation model switching** — swap between GPT, Claude, and Gemini mid-conversation without losing history; model and provider are now stored per-message in the DB and shown in the sidebar
+- **Model badge on assistant messages** — each AI reply shows a coloured dot + model name so you always know which model generated a response
+- **Anthropic streaming fix** — replaced `stream.on('text', cb)` with explicit `for await` iteration over raw stream events, eliminating the `[object Object]` rendering bug with Claude 4.x models
+- **Reliable SSE completion** — all adapters now properly `await` the `onDone` callback so the DB save and the SSE `done` event are guaranteed to complete before the connection closes
+- **Cross-model context sharing** — conversation history is preserved and correctly replayed when switching models, including `model` / `provider` metadata per stored message
+
+---
+
 ## Features
 
 | Feature | Details |
 |---------|---------|
 | Real-time streaming | Server-Sent Events (SSE) — tokens appear as they're generated |
 | Multi-provider LLM | OpenAI GPT, Anthropic Claude, Google Gemini |
+| Per-conversation model switching | Change model at any time; history carries over automatically |
+| Model badge | Each assistant reply displays a coloured dot + model name |
 | Conversation history | Persistent sidebar with per-conversation model tracking |
 | File upload | PDF, DOCX, XLSX, JPG, PNG — server-side text extraction for document Q&A |
 | Auth system | Email + OTP + device fingerprinting + JWT session revocation |
@@ -196,6 +209,9 @@ The app is Docker-ready: one container for the Node server, one for PostgreSQL. 
 
 ## Roadmap
 
+- [x] Per-conversation model switching with history preservation
+- [x] Model/provider badge on each assistant message
+- [x] Cross-model context sharing (model + provider stored per message)
 - [ ] Streaming tool/function call support
 - [ ] System prompt customisation per conversation
 - [ ] Team workspaces with shared conversations
